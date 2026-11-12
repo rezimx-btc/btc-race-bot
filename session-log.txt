@@ -1,0 +1,47 @@
+BUILD TRANSCRIPT / SESSION LOG — make.fun BTC trading bot (btc-race-24h-20261112-1439)
+Agent: Muse subagent (model Muse Spark), session b72d9615, built 2026-11-12 ~18:38-19:45 UTC.
+Task: BUILD + BACKTEST ONLY, no submission. Uzan ordered "segera kerjakan".
+
+[18:38 UTC] Read skill.md v1.5.120; downloaded the kit (kit.tar.gz) and unpacked it.
+[18:38 UTC] Fetched competition record + leaderboard (714 submissions).
+[18:39 UTC] Read RULES.txt + kit.json + competition.yaml + harness source
+            (contracts/bars-protocol.ts, sim/bars/engine.ts, sim/bars/params.ts).
+            Authoritative rules established: fee 4 bps, slippage 2 bps, impact vs
+            open depth, max weight 100% of equity, latency 1 bar, no warmup.
+            Parent brief's fee/cap claims corrected against the kit.
+[18:39 UTC] Analyzed dev bars (1,439 bars): B&H -2.30%, 1-min return SD 5.07 bps,
+            flat bars 17.8%, median depth ~$1.30M, round trip ~27 bps at $1,000.
+[18:40 UTC] Wrote backtest.py (exact integer fill math from the engine) + strategies.py.
+            Baselines: B&H -$25.97, momentum -$23.31, house ema-cross -$95.88 (68 trades).
+            First candidates (dip/trend/breakout/SMA): all negative, best -$11.39.
+[18:41 UTC] strategies2.py: Donchian/slowEMA/hourly/rider. First positive:
+            hourly momentum (40 bps / 100 / 3h) +$3.81, 2 trades.
+[18:42 UTC] ceiling.py: DP hindsight ceiling ~+$45 (14 round trips) — extractable
+            alpha exists, but only with near-perfect timing.
+[18:43 UTC] grid.py: 300+ fast-dip configs. Best +$3.30 — overfit-looking (SL never
+            binds, 4 trades). grid2.py: RSI/Keltner/bar-momentum all negative;
+            dual (hourly-40 + dip-140) +$8.88, 6 trades.
+[18:44 UTC] robust.py/robust2.py/robust3.py: split-half + 2x-fee + neighbour grids.
+            Found the cooldown matters (0 -> -$1.75, 60-120 -> +$9.57) and that
+            any-bar momentum needs a 50 bps threshold (40 bps churns: -$0.55).
+[18:45 UTC] final_grid.py: neighbourhood around the frozen point is a positive
+            plateau (momentum 45-60, dip 140-160, TP 50-80, cooldown 60-120).
+            FROZEN: momentum 50 bps (any bar) + dip 150 bps + TP 70 / SL 60 /
+            timeout 120 / cooldown 60. Verified: +$10.66, 2x-fee +$8.24, H1 +$10.73,
+            H2 -$0.05, 3 round trips, maxDD 0.39%.
+[18:47 UTC] Wrote main.py + vendor/makefun_bars.py (byte-identical SDK copy, sha256
+            verified). Wrote sim_protocol.py (full NDJSON protocol run as a subprocess).
+[18:48 UTC] Protocol validation: main.py reproduces the backtester EXACTLY
+            (+$10.66, same 6 fills, exit 0, clean stderr). Determinism: two full
+            runs identical.
+[19:4x UTC] Wrote Makefile, README.md, backtest-report.md, this session log.
+            No submission, no sign-in, no GitHub repo, no wallet connected.
+
+Decisions recorded:
+- Strategy chosen is general (trend + mean-reversion with sane risk limits), not
+  a dev-window curve fit: mid-plateau parameters, 2x-fee positive, split-half
+  checked, only 3 round trips/day.
+- max_slippage_bps = 10,000 (wide open, like the house bots) so a fast live minute
+  cannot spuriously reject an order; dev fills never approached the bound.
+- Entry price for TP/SL is the decision-bar close (matches the backtester exactly),
+  not the fill price.
